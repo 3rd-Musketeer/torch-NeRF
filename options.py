@@ -5,7 +5,7 @@ def GetParser():
     parser = argparse.ArgumentParser()
 
     # basic parameters
-    parser.add_argument('--exp_name', type=str, default="run1")
+    parser.add_argument('--exp_name', type=str, required=True)
 
     parser.add_argument('--log_dir', type=str, default='./log/')
 

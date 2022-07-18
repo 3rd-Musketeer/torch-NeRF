@@ -7,7 +7,7 @@ def GetParser():
     # basic parameters
     parser.add_argument('--exp_name', type=str, required=True)
 
-    parser.add_argument('--log_dir', type=str, default='./log/')
+    parser.add_argument('--log_dir', type=str, default='./log')
 
     parser.add_argument("--random_seed", type=int,
                         default=829)
@@ -22,12 +22,14 @@ def GetParser():
                         default=64)
     parser.add_argument('--sample_fine', type=int,
                         default=128)
-    parser.add_argument('--sample_ray', type=int,
+    parser.add_argument('--sample_ray_train', type=int,
+                        default=1024)
+    parser.add_argument('--sample_ray_test', type=int,
                         default=1024)
     parser.add_argument('--ray_chunk', type=int,
-                        default=1024*16)
+                        default=1024 * 16)
     parser.add_argument('--ray_batch', type=int,
-                        default=1024*32)
+                        default=1024 * 32)
     parser.add_argument('--rand_sample', type=bool,
                         default=True)
 
@@ -53,20 +55,27 @@ def GetParser():
     parser.add_argument('--batch_size', type=int,
                         default=1)
     parser.add_argument('--iterations', type=int,
-                        default=500)
+                        default=20)
     parser.add_argument('--lr', type=float,
                         default=5e-4)
     parser.add_argument('--decay_step', type=int,
-                        default=250)
+                        default=10)
     parser.add_argument("--decay_rate", type=float,
                         default=0.1)
     parser.add_argument("--config_dir", type=str,
-                        default=None)
+                        default=None, help="Directory of config file.")
     parser.add_argument("--save_log", type=int,
-                        default=10)
-
+                        default=10, help="Save log per save_log iterations")
     parser.add_argument('--load_log', type=int,
-                        default=None)
+                        default=None, help="Specify the iteration to restart training.")
+    parser.add_argument('--down_sample', type=float,
+                        default=0.5, help="Down-sample ratio.")
+
+    # testing parameters
+    parser.add_argument('--idx_show', type=list,
+                        default=[0],
+                        help="Specify the index of images to show while testing. None for show all.")
+
     return parser
 
 

@@ -1,12 +1,30 @@
 import json
 import os
-import imageio
-import matplotlib.pyplot as plt
-import numpy as np
 import cv2
+import imageio
+import numpy as np
+from torch.utils.data import Dataset
 
 
-def load_blender(data_dir, data_type, downsample = None):
+class blender(Dataset):
+    def __init__(self, data_dir, data_type, downsample):
+        data, params = load_blender(data_dir, data_type, downsample)
+        self.images = data["images"]
+        self.c2ws = data["c2ws"]
+        self.params = params
+
+    def __getitem__(self, item):
+        return {"images": self.images[item], "c2ws": self.c2ws[item]}
+
+    def __len__(self):
+        return len(self.images)
+
+    def shuffle(self):
+        np.random.shuffle(self.images)
+        np.random.shuffle(self.c2ws)
+
+
+def load_blender(data_dir, data_type, downsample=None):
     with open(os.path.join(data_dir, "transforms_{}.json".format(data_type))) as jsfile:
         transforms = json.load(jsfile)
     images = []
@@ -24,8 +42,9 @@ def load_blender(data_dir, data_type, downsample = None):
         "width": width,
         "focal": 0.5 * width / np.tan(0.5 * camera_angle_x),
         "near": 2.0,
-        "far": 6.0
+        "far": 6.0,
+        "length": len(images)
     }
     images = np.array(images)
     c2ws = np.array(c2ws)
-    return {"images": images, "c2ws": c2ws, "length": len(images)}, params
+    return {"images": images, "c2ws": c2ws}, params

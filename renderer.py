@@ -1,8 +1,6 @@
+import matplotlib.pyplot as plt
 import torch
 import nerf
-import torch.nn.functional as F
-import matplotlib.pyplot as plt
-from timeit import default_timer as timer
 
 """
 DataLoader

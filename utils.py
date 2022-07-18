@@ -38,7 +38,7 @@ def Vec2Img(input_vec):
 
 
 def Batch2Stream(img_batch, sample_ray, params):
-    N = len(img_batch["images"])
+    N = len(img_batch)
     height = params["height"]
     width = params["width"]
     focal = params["focal"]
@@ -46,8 +46,8 @@ def Batch2Stream(img_batch, sample_ray, params):
     ray_d_batch = []  # [B, N_rays, 3]
     mapped_img = []  # [B, N_rays, 1]
     for i in range(N):
-        img = torch.Tensor(img_batch["images"][i])
-        c2w = torch.Tensor(img_batch["c2ws"][i])
+        img = torch.Tensor(img_batch[i]["images"])
+        c2w = torch.Tensor(img_batch[i]["c2ws"])
         rays_o, rays_d, pos = GetRays(height, width, focal, c2w, sample_ray)  # [N_rays, 3] [N_rays, 1]
         ray_o_batch.append(rays_o)
         ray_d_batch.append(rays_d)
@@ -66,8 +66,8 @@ def c2w2Ray(c2w, sample_ray, params):
     width = params["width"]
     focal = params["focal"]
     c2w = torch.Tensor(c2w)
-    rays_o, rays_d, _ = GetRays(height, width, focal, c2w, sample_ray)
-    return rays_o, rays_d
+    rays_o, rays_d, pos = GetRays(height, width, focal, c2w, sample_ray)
+    return rays_o, rays_d, pos
 
 
 def GetRays(height: int, width: int, focal: float, c2w, N_samples: int = None):

@@ -5,7 +5,7 @@ def GetParser():
     parser = argparse.ArgumentParser()
 
     # basic parameters
-    parser.add_argument('--exp_name', type=str, required=True)
+    parser.add_argument('--exp_name', type=str, default="test-2022-7-18-r2")
 
     parser.add_argument('--log_dir', type=str, default='./log')
 
@@ -55,21 +55,25 @@ def GetParser():
     parser.add_argument('--batch_size', type=int,
                         default=1)
     parser.add_argument('--iterations', type=int,
-                        default=20)
+                        default=1000)
     parser.add_argument('--lr', type=float,
                         default=5e-4)
     parser.add_argument('--decay_step', type=int,
-                        default=10)
+                        default=1500)
     parser.add_argument("--decay_rate", type=float,
                         default=0.1)
     parser.add_argument("--config_dir", type=str,
                         default=None, help="Directory of config file.")
+    parser.add_argument('--freq_test', type=int,
+                        default=100)
     parser.add_argument("--save_log", type=int,
-                        default=10, help="Save log per save_log iterations")
+                        default=500, help="Save log per save_log iterations")
     parser.add_argument('--load_log', type=int,
-                        default=None, help="Specify the iteration to restart training.")
+                        default=-1, help="Specify the iteration to restart training.")
     parser.add_argument('--down_sample', type=float,
                         default=0.5, help="Down-sample ratio.")
+    parser.add_argument('--early_downsample', type=int,
+                        default=400)
 
     # testing parameters
     parser.add_argument('--idx_show', type=list,

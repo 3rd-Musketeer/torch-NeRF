@@ -31,6 +31,7 @@ def LrateDecay(it, lrate, drate, dstep, optimizer):
     new_lrate = lrate * (drate ** (it / dstep))
     for params in optimizer.param_groups:
         params["lr"] = new_lrate
+    return new_lrate
 
 
 def Vec2Img(input_vec):

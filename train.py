@@ -11,31 +11,35 @@ def Train(train_params, datasets, renderer, optimizer, LrDecay):
     val_dataset = datasets["val"]
     it_start = train_params["it_start"]
     it_end = train_params["it_end"]
-    loss_log = train_params["loss_log"]
     it_log = train_params["it_log"]
     log_dir = train_params["log_dir"]
     writer = train_params["writer"]
+    freq_test = train_params["freq_test"]
+    early_downsample = train_params["early_downsample"]
 
     # print(ray_o_batch.device, ray_d_batch.device, mapped_img.device)
     bar_it = tqdm(range(it_end), leave=True, ncols=80, desc="Iteration", delay=2)
     for it in bar_it:
-        if it < it_start: continue
+        if it <= it_start: continue
+        if it > early_downsample:
+            train_dataset.set_down_sample(1.0)
         # bar_it.set_description("Iteration {:5d}/{:5d}".format(it+1, it_end))
         train_loss, train_psnr = RuntimeTrain(train_params, train_dataset, renderer, optimizer)
         writer.add_scalar('Loss/train', train_loss, it + 1)
         writer.add_scalar('PSNR/train', train_psnr, it + 1)
-        LrDecay(it)
+        new_lrate = LrDecay(it)
+        writer.add_scalar('Learning rate', new_lrate, it + 1)
         bar_it.write("\nIteration:{:4d}/{:4d} train_loss:{:.3f} train_psnr:{:.3f}".format(
             it + 1, it_end, train_loss, train_psnr)
         )
-        loss_log.append(train_loss)
-        with torch.no_grad():
-            test_loss, test_psnr = RuntimeTest(train_params, test_dataset, renderer, it)
-        writer.add_scalar('Loss/test', test_loss, it + 1)
-        writer.add_scalar('PSNR/test', test_psnr, it + 1)
-        bar_it.write("-" * 10 + "Test Results" + "-" * 10)
-        bar_it.write("test_loss:{:.3f} test_psnr:{:.3f}".format(test_loss, test_psnr))
-        bar_it.write("-" * 32)
+        if (it + 1) % freq_test == 0:
+            with torch.no_grad():
+                test_loss, test_psnr = RuntimeTest(train_params, test_dataset, renderer, it)
+            writer.add_scalar('Loss/test', test_loss, it + 1)
+            writer.add_scalar('PSNR/test', test_psnr, it + 1)
+            bar_it.write("-" * 10 + "Test Results" + "-" * 10)
+            bar_it.write("test_loss:{:.3f} test_psnr:{:.3f}".format(test_loss, test_psnr))
+            bar_it.write("-" * 32)
         if (it + 1) % it_log == 0 or it == len(bar_it) - 1:
             with torch.no_grad():
                 val_loss, val_psnr = RuntimeEval(train_params, val_dataset, renderer, it)
@@ -47,9 +51,13 @@ def Train(train_params, datasets, renderer, optimizer, LrDecay):
             cur_dir = os.path.join(log_dir, "it" + str(it + 1))
             if not os.path.exists(cur_dir):
                 os.makedirs(cur_dir)
-            torch.save(renderer.fine_model.state_dict(), os.path.join(cur_dir, "fine_model.pth"))
-            torch.save(renderer.coarse_model.state_dict(), os.path.join(cur_dir, "coarse_model.pth"))
-            torch.save(optimizer.state_dict(), os.path.join(cur_dir, "optimizer.pth"))
+            saved_params = {
+                "fine_model": renderer.fine_model.state_dict(),
+                "coarse_model": renderer.coarse_model.state_dict(),
+                "optimizer": optimizer.state_dict(),
+                "iteration": it,
+            }
+            torch.save(saved_params, os.path.join(cur_dir, "saved_params.pth"))
             bar_it.write("Model logs saved at {}".format(cur_dir))
         writer.flush()
 
@@ -138,10 +146,10 @@ def RuntimeTest(train_params, dataset, renderer, iteration):
         #     plt.imshow(res_image)
         #     plt.pause(2)
         #     plt.close()
-        # cur_dir = os.path.join(log_dir, "it" + str(iteration), "log_img")
+        # cur_dir = os.path.join(log_dir, "it" + str(iteration+1), "log_img")
         # if not os.path.exists(cur_dir):
         #     os.makedirs(cur_dir)
-        # save_dir = os.path.join(cur_dir, "{}.png".format(it + 1))
+        # save_dir = os.path.join(cur_dir, "{}.png".format(it))
         # plt.imsave(save_dir, res_image)
 
     return np.mean(loss_que), np.mean(psnr_que)
@@ -185,13 +193,13 @@ def RuntimeEval(eval_params, dataset, renderer, iteration):
             plt.imshow(res_image)
             plt.pause(2)
             plt.close()
-        cur_dir = os.path.join(log_dir, "it" + str(iteration), "log_img")
+        cur_dir = os.path.join(log_dir, "it" + str(iteration+1), "log_img")
         if not os.path.exists(cur_dir):
             os.makedirs(cur_dir)
-        save_dir = os.path.join(cur_dir, "{}.png".format(it + 1))
+        save_dir = os.path.join(cur_dir, "{}.png".format(it))
         plt.imsave(save_dir, res_image)
-        writer.add_image('Image/Prediction', res_image, iteration + 1, dataformats="HWC")
-        writer.add_image('Image/Ground Truth', gt_image, iteration + 1, dataformats="HWC")
+        writer.add_image('Image/Prediction'+str(it), res_image, iteration + 1, dataformats="HWC")
+        writer.add_image('Image/Ground Truth'+str(it), gt_image, iteration + 1, dataformats="HWC")
 
     return np.mean(loss_que), np.mean(psnr_que)
 

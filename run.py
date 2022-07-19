@@ -1,5 +1,5 @@
 import random
-from dataset import blender
+from dataset import Blender
 from nerf import Embedder
 from options import GetParser
 from renderer import Renderer
@@ -12,8 +12,8 @@ def run():
     parser = GetParser()
     args = parser.parse_args()
 
-    if args.load_log is not None:
-        args = LoadArgs(os.path.join(args.log_dir, args.exp_name), args)
+    if args.config_dir is not None:
+        args = LoadArgs(args.config_dir, args)
     if args.save_log is not None:
         SaveArgs(os.path.join(args.log_dir, args.exp_name), args)
 
@@ -21,41 +21,29 @@ def run():
     np.random.seed(args.random_seed)
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    train_set = blender("./dataset/nerf_synthetic/lego", "train", downsample=args.down_sample)
-    test_set = blender("./dataset/nerf_synthetic/lego", "test", downsample=args.down_sample)
-    val_set = blender("./dataset/nerf_synthetic/lego", "val", downsample=args.down_sample)
+    train_set = Blender("./dataset/nerf_synthetic/lego", "train", downsample=args.down_sample)
+    test_set = Blender("./dataset/nerf_synthetic/lego", "test", downsample=args.down_sample)
+    val_set = Blender("./dataset/nerf_synthetic/lego", "val", downsample=args.down_sample)
 
     coarse_model = CreateModel(args)
     fine_model = CreateModel(args)
 
     optimizer = CreateOptimizer(args, [coarse_model, fine_model])
 
-    loss_log = []
-
-    restart_it = None
+    restart_it = -1
 
     if args.load_log is not None:
-        if args.load_log == -1:
-            dir = os.path.join(args.log_dir, args.exp_name)
-            filenames = os.listdir(dir)
-            filenames = [file for file in filenames if (('it' in file) and ("." not in file))]
-            dir = os.path.join(dir, sorted(filenames)[-1])
-            restart_it = int(sorted(filenames)[-1][2:])
-        else:
-            dir = os.path.join(args.log_dir, args.exp_name, str(args.log_dir) + "it")
-        assert os.path.exists(dir)
+        loaded_params = torch.load(args.load_log)
         fine_model.load_state_dict(
-            os.path.join(dir, "fine_model.pth")
+            torch.load(loaded_params["fine_model"])
         )
         coarse_model.load_state_dict(
-            os.path.join(dir, "coarse_model.pth")
+            torch.load(loaded_params["coarse_model"])
         )
         optimizer.load_state_dict(
-            os.path.join(dir, "optimizer.pth")
+            torch.load(loaded_params["optimizer"])
         )
-        loss_log = torch.load(
-            os.path.join(dir, "loss_log.pth")
-        )
+        restart_it = loaded_params["iteration"]
 
     coarse_model.to(device)
     fine_model.to(device)
@@ -94,14 +82,15 @@ def run():
         "sample_ray_test": args.sample_ray_test,
         "sample_ray_train": args.sample_ray_train,
         "batch_size": args.batch_size,
-        "it_start": len(loss_log),
+        "it_start": restart_it,
         "it_end": args.iterations,
-        "loss_log": loss_log,
         "it_log": args.save_log,
         "log_dir": log_dir,
         "idx_show": args.idx_show,
         "writer": writer,
-        "shuffle": args.shuffle
+        "shuffle": args.shuffle,
+        "freq_test": args.freq_test,
+        "early_downsample": args.early_downsample
     }
 
     Train(train_params, datasets, renderer, optimizer, LrDecay)
